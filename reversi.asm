@@ -70,7 +70,10 @@
 		.asciiz "Enter the vertical letter (1-8): "
 	
 	# Arrays and structures needed to implement the game.
+	
 	Board: .word 256 # Reserve 64 * 4 == 256 in order to store the 64 board spaces.
+	
+	ValidNextMoves: .word 256 # Reserve potential board spaces that the human or computer can move to next.
 	
 .text
 
@@ -85,6 +88,7 @@ main:
 	#	5. Jump to Step 1.
 	
 	# Initialize the Board before the main function begins.
+	
 	j MainMenu
 	
 MainMenu:
@@ -278,7 +282,29 @@ IsOnBoard:
 	# Verify that the coordinates entered are valid coordinates.
 	# $a2 contains the Horizontal (X) Position (1-8)			$a2
 	# $a3 contains the Vertical (Y) Position (1-8)				$a3
+	# $t1 is a temporary register containing the truth of the statement	$t1
 	# Returns: 0 (False) or 1 (True) in $v0 if the chosen move is valid.	$v0
+	
+	# Initialize $v0 at 1, it will be true unless violated.
+	addi $v0, $zero, 1
+	
+	# X >= 1
+	sge $t1, $a2, 1
+	and $v0, $v0, $t1
+	
+	# X <= 8
+	sle $t1, $a2, 8
+	and $v0, $v0, $t1
+	
+	# Y >= 1
+	sge $t1, $a3, 1
+	and $v0, $v0, $t1
+	
+	# Y <= 8
+	sle $t1, $a3, 8
+	and $v0, $v0, $t1
+	
+	jr $ra
 
 
 ValidateUserMove:
@@ -334,3 +360,8 @@ InvalidChoice:
 	la $a0, InvalidFirstMessage		# Load address InvalidHorizontalMessage into $a0.
 	syscall
 	j UserChooseBoardPosition
+	
+ExitReversi:
+	# Exit the game.
+	li $v0, 10				# exit opcode
+	syscall
