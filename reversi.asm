@@ -57,8 +57,7 @@ main:
 
 InitializeBoard:
 	# Initialize an empty board at the start of the program.
-	# Each word in board is initialized as a 0.
-	# This is pretty much useless since everything starts out at zero.
+	# Allocated spaces start at 0x00, so they will be considered open spaces until acted upon.
 	
 	addi $t1, $zero, 1			# Store 1 (X) into $t1
 	addi $t2, $zero, 2			# Store 2 (O) into $t2
@@ -196,6 +195,31 @@ DrawSymbol:
 	DrawSpace:	la $a0, SPACE		# Print a space (" ")
 			syscall
 			jr $ra
+
+
+
+ConvertXYToBoardIndex:
+	# Board indices are stored in a 64-word array corresponding to the 64 positions on a Reversi Board.
+	# Convert an X/Y Coordinate into a number which can be accessed more easily.
+	
+	# $a2 contains the Horizontal (X) Position (1-8)
+	# $a3 contains the Vertical (Y) Position (1-8)
+	# Returns: $v0: an integer representing the location in memory.
+	
+	addi $a3, $a3, -1
+	sll $a3, $a3, 3
+	add $v0, $a2, $a3
+	jr $ra
+	
+IsOnBoard:
+	# Verify that the coordinates entered are valid coordinates.
+	# $a2 contains the Horizontal (X) Position (1-8)			$a2
+	# $a3 contains the Vertical (Y) Position (1-8)				$a3
+	# Returns: 0 (False) or 1 (True) in $v0 if the chosen move is valid.	$v0
+
+
+ValidateUserMove:
+	# Check whether a board position is a valid choice.
 
 UserChooseBoardPosition:
 	# Ask the user for the board position they wish to place a piece on.
