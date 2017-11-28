@@ -86,7 +86,7 @@ DrawBoard:
 	
 	la $a0, BoardPieceB
 	syscall
-	add $t0, $zero, $zero
+	addi $t0, $zero, -4
 	FirstDrawBoardLoop:
 	lw $a1, Board($t0)
 	addi $t0, $t0, 4
