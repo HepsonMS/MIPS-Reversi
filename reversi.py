@@ -243,71 +243,42 @@ while True:
                 validMovesBoard = getBoardWithValidMoves(mainBoard, playerTile)
                 drawBoard(validMovesBoard)
             else:
-
                 drawBoard(mainBoard)
-
             showPoints(playerTile, computerTile)
-
             move = getPlayerMove(mainBoard, playerTile)
 
             if move == 'quit':
-
                 print('Thanks for playing!')
-
                 sys.exit() # terminate the program
-
             elif move == 'hints':
-
                 showHints = not showHints
-
                 continue
-
             else:
-
                 makeMove(mainBoard, playerTile, move[0], move[1])
 
             if getValidMoves(mainBoard, computerTile) == []:
-
                 break
-
             else:
-
                 turn = 'computer'
 
         else:
-
             # Computer's turn.
-
             drawBoard(mainBoard)
-
             showPoints(playerTile, computerTile)
-
             input('Press Enter to see the computer\'s move.')
-
             x, y = getComputerMove(mainBoard, computerTile)
-
             makeMove(mainBoard, computerTile, x, y)
-
             if getValidMoves(mainBoard, playerTile) == []:
-
                 break
-
             else:
-
                 turn = 'player'
 
     # Display the final score.
-
     drawBoard(mainBoard)
-
     scores = getScoreOfBoard(mainBoard)
-
     print('X scored %s pointsO scored %s points.' % (scores['X'], scores['O']))
-
     if scores[playerTile] > scores[computerTile]:
-
         print('You beat the computer by %s points! Congratulations!' % (scores[playerTile] - scores[computerTile]))
-
     elif scores[playerTile] < scores[computerTile]:
         print('You lostThe computer beat you by %s points.' % (scores[computerTile] - scores[playerTile]))
     else:
