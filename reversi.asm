@@ -179,23 +179,23 @@ DrawBoard:
 
 DrawSymbol:
 	# Helper function to draw a certain function depending on what the argument contains.
+	#		$a0 will contain the symbol to be printed (X, O, " ")
+	#		$a1 contains the element found at a memory location on a board (either 0, 1, 2)
+	# 		$v0 should already contain the print_string opcode.
 	beq $a1, $zero, DrawSpace
 	beq $a1, 1, DrawX
 	beq $a1, 2, DrawO
 	jr $ra
 
-	DrawX:
-		la $a0, X
-		syscall
-		jr $ra
-	DrawO:
-		la $a0, O
-		syscall
-		jr $ra
-	DrawSpace:
-		la $a0, SPACE
-		syscall
-		jr $ra
+	DrawX:		la $a0, X		# Print an X
+			syscall
+			jr $ra
+	DrawO:		la $a0, O		# Print an O
+			syscall
+			jr $ra
+	DrawSpace:	la $a0, SPACE		# Print a space (" ")
+			syscall
+			jr $ra
 
 UserChooseBoardPosition:
 	# Ask the user for the board position they wish to place a piece on.
@@ -246,4 +246,4 @@ InvalidChoice:
 	li $v0, 4				# Loads 4 into $v0, print_string opcode.
 	la $a0, InvalidFirstMessage		# Load address InvalidHorizontalMessage into $a0.
 	syscall
-	jal UserChooseBoardPosition
+	j UserChooseBoardPosition
