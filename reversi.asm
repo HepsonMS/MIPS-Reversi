@@ -1,7 +1,29 @@
-# A MIPS Demonstration program which asks the user for a board position and loads it into memory.
+# A MIPS Program for playing the Game of Reversi
 # Alexander L. Hayes
 # Computer Architecture 3340.001
 
+# MIT License
+
+# Copyright (c) 2017 Alexander L. Hayes, Henry Forson, Hepson Sanchez, and Jonathan Dubon
+
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+# 
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+# 
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+# The game will be played on a board which looks like this:
 	#   12345678 
 	#  +--------+
 	# 1|        |
@@ -15,6 +37,13 @@
 	#  +--------+
 
 .data
+
+	# Main Menu
+	TitleAndMenuOptions: .asciiz "     MIPS REVERSI\n0) New Game\n1) Instructions\n"
+	# Game Instructions
+	GameInstructions: .asciiz "\n\nInstructions\nReversi is a game where opponents flip tiles until there are no further moves.\n\n"
+
+	# Board Segments
 	BoardPieceA: .asciiz "\n   12345678 \n  +--------+\n"
 	BoardPieceB: .asciiz " 1|"
 	BoardPieceC: .asciiz " 2|"
@@ -27,10 +56,12 @@
 	BoardPieceJ: .asciiz "  +--------+\n"
 	BoardRHS: .asciiz "|\n"
 	
+	# X, O, and space
 	X: .asciiz "X"
 	O: .asciiz "O"
 	SPACE: .asciiz " "
 	
+	# Instructions
 	EnterHorizontal:
 		.asciiz "\nEnter the horizontal number (1-8): "
 	InvalidFirstMessage:
@@ -38,6 +69,7 @@
 	EnterVertical:
 		.asciiz "Enter the vertical letter (1-8): "
 	
+	# Arrays and structures needed to implement the game.
 	Board: .word 256 # Reserve 64 * 4 == 256 in order to store the 64 board spaces.
 	
 .text
@@ -53,7 +85,38 @@ main:
 	#	5. Jump to Step 1.
 	
 	# Initialize the Board before the main function begins.
-	j InitializeBoard
+	j MainMenu
+	
+MainMenu:
+	# Greet the user, welcome them to the game.
+	li $v0, 4				# Load 4 into $v0, print_string opcode.
+	la $a0, TitleAndMenuOptions
+	syscall
+	
+	# Get the user input.
+	li $v0, 5				# Load 5 into $v0, read_int opcode.
+	syscall
+	beq $v0, $zero, InitializeBoard		# 0: Jump to InitializeBoard
+	beq $v0, 1, InstructionsMenu		# 1: Jump to InstructionsMenu
+	j MainMenu				# Else: Return to main menu.
+	
+InstructionsMenu:
+	# Give a brief overview of the instructions for playing Reversi, then return to the MainMenu.
+	li $v0, 4
+	la $a0, GameInstructions
+	syscall
+	j MainMenu
+
+ResetBoard:
+	# If the board is reset, fill each space with a 0, then reinitialize.
+	# $t0 will be our index pointer.
+	
+	add $t0, $zero, $zero			# Start at 0
+	ResetBoardLoop:
+	sw $zero, Board($t0)
+	addi $t0, $t0, 4
+	beq $t0, 256, InitializeBoard		# Loop until 256, then initialize the board.
+	j ResetBoardLoop			# Else loop
 
 InitializeBoard:
 	# Initialize an empty board at the start of the program.
