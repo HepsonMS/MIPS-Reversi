@@ -76,8 +76,8 @@
 		.asciiz "\nError: Could not draw symbol with key:\n"
 	
 	# Arrays and structures needed to implement the game.
-	
-	Board: .word 256 # Reserve 64 * 4 == 256 in order to store the 64 board spaces.
+
+	Board: .word 0:256 # Reserve 64 * 4 == 256 in order to store the 64 board spaces.
 	
 	ValidNextMoves: .word 256 # Reserve potential board spaces that the human or computer can move to next.
 	
@@ -161,97 +161,74 @@ DrawBoard:
 	la $a0, BoardPieceB
 	syscall
 
-	#la $t0, Board
-	add $t0, $zero, $zero			# Start $t0 at index 0
-	FirstDrawBoardLoop:
-	lw $a1, Board($t0)
-	addi $t0, $t0, 4
-	jal DrawSymbol
-	bne $t0, 32, FirstDrawBoardLoop
-	la $a0, BoardRHS
-	syscall
+	la $s0, Board				# Load address of Board into $t0
+	li $s1, 0				# Use s1 to keep track of the number of states we have visited so far.
 	
-	la $a0, BoardPieceC
-	syscall
-	addi $t0, $zero, 32
-	SecondDrawBoardLoop:
-	lw $a1, Board($t0)
-	addi $t0, $t0, 4
+	DrawBoardLoop:
+	lw $a1, ($s0)
 	jal DrawSymbol
-	bne $t0, 64, SecondDrawBoardLoop
-	la $a0, BoardRHS
-	syscall
+	addi $s0, $s0, 4
+	addi $s1, $s1, 4
 	
-	la $a0, BoardPieceD
-	syscall
-	addi $t0, $zero, 64
-	ThirdDrawBoardLoop:
-	lw $a1, Board($t0)
-	addi $t0, $t0, 4
-	jal DrawSymbol
-	bne $t0, 96, ThirdDrawBoardLoop
-	la $a0, BoardRHS
-	syscall
+	beq $s1, 32, DrawRHS1
+	beq $s1, 64, DrawRHS2
+	beq $s1, 96, DrawRHS3
+	beq $s1, 128, DrawRHS4
+	beq $s1, 160, DrawRHS5
+	beq $s1, 192, DrawRHS6
+	beq $s1, 224, DrawRHS7
+	beq $s1, 256, DrawRHS8
 	
-	la $a0, BoardPieceE
-	syscall
-	addi $t0, $zero, 96
-	FourthDrawBoardLoop:
-	lw $a1, Board($t0)
-	addi $t0, $t0, 4
-	jal DrawSymbol
-	bne $t0, 128, FourthDrawBoardLoop
-	la $a0, BoardRHS
-	syscall
+	j DrawBoardLoop
 	
-	la $a0, BoardPieceF
-	syscall
-	addi $t0, $zero, 128
-	FifthDrawBoardLoop:
-	lw $a1, Board($t0)
-	addi $t0, $t0, 4
-	jal DrawSymbol
-	bne $t0, 160, FifthDrawBoardLoop
-	la $a0, BoardRHS
-	syscall
-	
-	la $a0, BoardPieceG
-	syscall
-	addi $t0, $zero, 160
-	SixthDrawBoardLoop:
-	lw $a1, Board($t0)
-	addi $t0, $t0, 4
-	jal DrawSymbol
-	bne $t0, 192, SixthDrawBoardLoop
-	la $a0, BoardRHS
-	syscall
-
-	la $a0, BoardPieceH
-	syscall
-	addi $t0, $zero, 192
-	SeventhDrawBoardLoop:
-	lw $a1, Board($t0)
-	addi $t0, $t0, 4
-	jal DrawSymbol
-	bne $t0, 224, SeventhDrawBoardLoop
-	la $a0, BoardRHS
-	syscall
-	
-	la $a0, BoardPieceI
-	syscall
-	addi $t0, $zero, 224
-	EighthDrawBoardLoop:
-	lw $a1, Board($t0)
-	addi $t0, $t0, 4
-	jal DrawSymbol
-	bne $t0, 256, EighthDrawBoardLoop
-	la $a0, BoardRHS
-	syscall
-	
-	la $a0, BoardPieceJ
-	syscall
-	
-	j UserChooseBoardPosition
+	DrawRHS1:
+		la $a0, BoardRHS
+		syscall
+		la $a0, BoardPieceC
+		syscall
+		j DrawBoardLoop
+	DrawRHS2:
+		la $a0, BoardRHS
+		syscall
+		la $a0, BoardPieceD
+		syscall
+		j DrawBoardLoop
+	DrawRHS3:
+		la $a0, BoardRHS
+		syscall
+		la $a0, BoardPieceE
+		syscall
+		j DrawBoardLoop
+	DrawRHS4:
+		la $a0, BoardRHS
+		syscall
+		la $a0, BoardPieceF
+		syscall
+		j DrawBoardLoop
+	DrawRHS5:
+		la $a0, BoardRHS
+		syscall
+		la $a0, BoardPieceG
+		syscall
+		j DrawBoardLoop
+	DrawRHS6:
+		la $a0, BoardRHS
+		syscall
+		la $a0, BoardPieceH
+		syscall
+		j DrawBoardLoop
+	DrawRHS7:
+		la $a0, BoardRHS
+		syscall
+		la $a0, BoardPieceI
+		syscall
+		j DrawBoardLoop
+	DrawRHS8:
+		la $a0, BoardRHS
+		syscall
+		la $a0, BoardPieceJ
+		syscall
+		j UserChooseBoardPosition
 
 DrawSymbol:
 	# Helper function to draw a certain function depending on what the argument contains.
@@ -280,6 +257,7 @@ DrawSymbol:
 	DrawSymbolError:
 			la $a0, DrawSymbolErrorMessage
 			syscall
+			li $v0, 1
 			move $a0, $a1
 			syscall
 			j ExitReversi
