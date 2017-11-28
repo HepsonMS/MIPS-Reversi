@@ -35,6 +35,8 @@
 	# 7|        |
 	# 8|        |
 	#  +--------+
+	
+	# The Python version of the board is much cleaner, implementing that is a goal.
 
 .data
 
@@ -64,10 +66,14 @@
 	# Instructions
 	EnterHorizontal:
 		.asciiz "\nEnter the horizontal number (1-8): "
-	InvalidFirstMessage:
-		.asciiz "\nINVALID!."
 	EnterVertical:
 		.asciiz "Enter the vertical letter (1-8): "
+		
+	# Error messages
+	InvalidFirstMessage:
+		.asciiz "\nINVALID!"
+	DrawSymbolErrorMessage:
+		.asciiz "\nError: Could not draw symbol with key:\n"
 	
 	# Arrays and structures needed to implement the game.
 	
@@ -143,6 +149,8 @@ InitializeBoard:
 	addi $t0, $zero, 140
 	sw $t1, Board($t0)
 	
+	j DrawBoard				# Jump to DrawBoard (for consistency).
+	
 DrawBoard:
 	# Draw the board for Reversi, 0 becomes a space, 1 becomes an X, and 2 becomes an O
 	# Redo most of this with a macro if you find the time. Use two A registers to keep track of position and increment by 32.
@@ -152,7 +160,9 @@ DrawBoard:
 	
 	la $a0, BoardPieceB
 	syscall
-	addi $t0, $zero, -4
+
+	#la $t0, Board
+	add $t0, $zero, $zero			# Start $t0 at index 0
 	FirstDrawBoardLoop:
 	lw $a1, Board($t0)
 	addi $t0, $t0, 4
@@ -251,6 +261,11 @@ DrawSymbol:
 	beq $a1, $zero, DrawSpace
 	beq $a1, 1, DrawX
 	beq $a1, 2, DrawO
+	
+	# Error checking if symbol is out of range.
+	bgt $a1, 2, DrawSymbolError
+	blt $a1, $zero, DrawSymbolError
+	
 	jr $ra
 
 	DrawX:		la $a0, X		# Print an X
@@ -262,8 +277,13 @@ DrawSymbol:
 	DrawSpace:	la $a0, SPACE		# Print a space (" ")
 			syscall
 			jr $ra
-
-
+	DrawSymbolError:
+			la $a0, DrawSymbolErrorMessage
+			syscall
+			move $a0, $a1
+			syscall
+			j ExitReversi
+			
 
 ConvertXYToBoardIndex:
 	# Board indices are stored in a 64-word array corresponding to the 64 positions on a Reversi Board.
@@ -307,8 +327,26 @@ IsOnBoard:
 	jr $ra
 
 
-ValidateUserMove:
-	# Check whether a board position is a valid choice.
+
+ClearValidNextMoves:
+	# Clear the ValidNextMoves array between moves, or if a move was invalid.
+	# $t0 will be our index pointer.
+	
+	add $t0, $zero, $zero					# Start at 0
+	ClearValidNextMovesLoop:
+	sw $zero, ValidNextMoves($t0)
+	addi $t0, $t0, 4
+	beq $t0, 256, JumpAfterClearingValidNextMoves		# Loop until 256, then jump back to where you were.
+	j ClearValidNextMovesLoop				# Else loop
+	
+	JumpAfterClearingValidNextMoves:
+	jr $ra
+
+isValidMove:
+	# Check whether a board position is a valid choice. Based somewhat on the "isValidMove" function in the Python code.
+	# Returns 0 if the human player's move is invalid (IsOnBoard) and clears "ValidNextMoves."
+	# If the move is valid, update ValidNextMoves
+	
 
 UserChooseBoardPosition:
 	# Ask the user for the board position they wish to place a piece on.
