@@ -53,26 +53,29 @@ main:
 	#	5. Jump to Step 1.
 	
 	# Initialize the Board before the main function begins.
-	jal InitializeBoard
+	j InitializeBoard
 
 InitializeBoard:
 	# Initialize an empty board at the start of the program.
-
-	
 	# Each word in board is initialized as a 0.
 	# This is pretty much useless since everything starts out at zero.
 	
-	add $t0, $zero, $zero			# $t0 will be our pointer, start at 0 and loop to 256 (64 * 4)
+	addi $t1, $zero, 1			# Store 1 (X) into $t1
+	addi $t2, $zero, 2			# Store 2 (O) into $t2
 	
-	InitializeBoardLoop:
-
-	#addi $t1, $zero, 0
-	#sw $t1, Board($t0)
-	sw $zero, Board($t0)
-	addi $t0, $t0, 4			# Add 4 to the pointer ($t0) to move to the next word in memory.
+	# We need to put 2 into 28 (108) and 37 (144), and put 1 into 29 (112) and 36 (140).
+	addi $t0, $zero, 108			# $t0 will be our pointer, start at 108.
 	
-	beq $t0, 256, DrawBoard			# Branch to DrawBoard when finished initializing the board.
-	jal InitializeBoardLoop
+	# Put the 2 into 108 and 144
+	sw $t2, Board($t0)
+	addi $t0, $zero, 144
+	sw $t2, Board($t0)
+	
+	# Put the 1 into 112 and 140
+	addi $t0, $zero, 112
+	sw $t1, Board($t0)
+	addi $t0, $zero, 140
+	sw $t1, Board($t0)
 	
 DrawBoard:
 	# Draw the board for Reversi, 0 becomes a space, 1 becomes an X, and 2 becomes an O
