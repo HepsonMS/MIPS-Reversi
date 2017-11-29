@@ -23,28 +23,28 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-# The game will be played on a board which looks like this:
-	#   12345678 
-	#  +--------+
-	# 1|        |
-	# 2|        |
-	# 3|        |
-	# 4|        |
-	# 5|        |
-	# 6|        |
-	# 7|        |
-	# 8|        |
-	#  +--------+
+
+
+# The game will be played on a board which looks somewhat like this:
+		#   1 2 3 4 5 6 7 8
+		# 1| | | | | | | | |
+		# 2| | | | | | | | |
+		# 3| | | | | | | | |
+		# 4| | | |O|X| | | |
+		# 5| | | |X|O| | | |
+		# 6| | | | | | | | |
+		# 7| | | | | | | | |
+		# 8| | | | | | | | |
 
 .data
 
 	# Main Menu
-	TitleAndMenuOptions: .asciiz "     MIPS REVERSI\n0) New Game\n1) Instructions\n"
+	TitleAndMenuOptions: .asciiz "     MIPS REVERSI\n0) New Game\n1) Instructions\n2) Exit Game\n"
 	# Game Instructions
-	GameInstructions: .asciiz "\n\nInstructions\nReversi is a game where opponents flip tiles until there are no further moves.\n\n"
+	GameInstructions: .asciiz "\n\nInstructions\nReversi is a game where opponents flip tiles until there are no further moves.\nPlay by typing the horizontal and vertical coordinates, or 404 to return to main menu.\n"
 
 	# Board Segments
-	BoardPieceA: .asciiz "\n   12345678 \n  +--------+\n"
+	BoardPieceA: .asciiz "\n   1 2 3 4 5 6 7 8\n"
 	BoardPieceB: .asciiz " 1|"
 	BoardPieceC: .asciiz " 2|"
 	BoardPieceD: .asciiz " 3|"
@@ -53,24 +53,34 @@
 	BoardPieceG: .asciiz " 6|"
 	BoardPieceH: .asciiz " 7|"
 	BoardPieceI: .asciiz " 8|"
-	BoardPieceJ: .asciiz "  +--------+\n"
-	BoardRHS: .asciiz "|\n"
+	BoardRHS: .asciiz "\n"
 	
 	# X, O, and space
-	X: .asciiz "X"
-	O: .asciiz "O"
-	SPACE: .asciiz " "
+	X: .asciiz "X|"
+	O: .asciiz "O|"
+	SPACE: .asciiz " |"
+	
+	# Scoring strings
+	XScoreMessage: .asciiz " points X; "
+	OScoreMessage: .asciiz " points O\n"
 	
 	# Instructions
 	EnterHorizontal:
 		.asciiz "\nEnter the horizontal number (1-8): "
-	InvalidFirstMessage:
-		.asciiz "\nINVALID!."
 	EnterVertical:
 		.asciiz "Enter the vertical letter (1-8): "
+		
+	# Error messages
+	InvalidFirstMessage:
+		.asciiz "\nINVALID! (enter 404 to exit)"
+	DrawSymbolErrorMessage:
+		.asciiz "\nError: Could not draw symbol with key:\n"
 	
 	# Arrays and structures needed to implement the game.
-	Board: .word 256 # Reserve 64 * 4 == 256 in order to store the 64 board spaces.
+
+	Board: .word 0:256 # Reserve 64 * 4 == 256 in order to store the 64 board spaces.
+	
+	ValidNextMoves: .word 0:256 # Reserve potential board spaces that the human or computer can move to next.
 	
 .text
 
@@ -84,7 +94,6 @@ main:
 	#	4. Check for Game Over.
 	#	5. Jump to Step 1.
 	
-	# Initialize the Board before the main function begins.
 	j MainMenu
 	
 MainMenu:
@@ -98,6 +107,7 @@ MainMenu:
 	syscall
 	beq $v0, $zero, InitializeBoard		# 0: Jump to InitializeBoard
 	beq $v0, 1, InstructionsMenu		# 1: Jump to InstructionsMenu
+	beq $v0, 2, ExitReversi			# 2: Jump to the Exit.
 	j MainMenu				# Else: Return to main menu.
 	
 InstructionsMenu:
@@ -120,7 +130,7 @@ ResetBoard:
 
 InitializeBoard:
 	# Initialize an empty board at the start of the program.
-	# Allocated spaces start at 0x00, so they will be considered open spaces until acted upon.
+	# Allocated words start at 0x00, so they will be considered open spaces until acted upon.
 	
 	addi $t1, $zero, 1			# Store 1 (X) into $t1
 	addi $t2, $zero, 2			# Store 2 (O) into $t2
@@ -139,102 +149,127 @@ InitializeBoard:
 	addi $t0, $zero, 140
 	sw $t1, Board($t0)
 	
+	j DrawBoard				# Jump to DrawBoard (for consistency).
+	
 DrawBoard:
 	# Draw the board for Reversi, 0 becomes a space, 1 becomes an X, and 2 becomes an O
-	# Redo most of this with a macro if you find the time. Use two A registers to keep track of position and increment by 32.
 	li $v0, 4				# Load 4 into $v0, print_string opcode.
 	la $a0, BoardPieceA
 	syscall
 	
 	la $a0, BoardPieceB
 	syscall
-	addi $t0, $zero, -4
-	FirstDrawBoardLoop:
-	lw $a1, Board($t0)
-	addi $t0, $t0, 4
-	jal DrawSymbol
-	bne $t0, 32, FirstDrawBoardLoop
-	la $a0, BoardRHS
-	syscall
-	
-	la $a0, BoardPieceC
-	syscall
-	addi $t0, $zero, 32
-	SecondDrawBoardLoop:
-	lw $a1, Board($t0)
-	addi $t0, $t0, 4
-	jal DrawSymbol
-	bne $t0, 64, SecondDrawBoardLoop
-	la $a0, BoardRHS
-	syscall
-	
-	la $a0, BoardPieceD
-	syscall
-	addi $t0, $zero, 64
-	ThirdDrawBoardLoop:
-	lw $a1, Board($t0)
-	addi $t0, $t0, 4
-	jal DrawSymbol
-	bne $t0, 96, ThirdDrawBoardLoop
-	la $a0, BoardRHS
-	syscall
-	
-	la $a0, BoardPieceE
-	syscall
-	addi $t0, $zero, 96
-	FourthDrawBoardLoop:
-	lw $a1, Board($t0)
-	addi $t0, $t0, 4
-	jal DrawSymbol
-	bne $t0, 128, FourthDrawBoardLoop
-	la $a0, BoardRHS
-	syscall
-	
-	la $a0, BoardPieceF
-	syscall
-	addi $t0, $zero, 128
-	FifthDrawBoardLoop:
-	lw $a1, Board($t0)
-	addi $t0, $t0, 4
-	jal DrawSymbol
-	bne $t0, 160, FifthDrawBoardLoop
-	la $a0, BoardRHS
-	syscall
-	
-	la $a0, BoardPieceG
-	syscall
-	addi $t0, $zero, 160
-	SixthDrawBoardLoop:
-	lw $a1, Board($t0)
-	addi $t0, $t0, 4
-	jal DrawSymbol
-	bne $t0, 192, SixthDrawBoardLoop
-	la $a0, BoardRHS
-	syscall
 
-	la $a0, BoardPieceH
-	syscall
-	addi $t0, $zero, 192
-	SeventhDrawBoardLoop:
-	lw $a1, Board($t0)
-	addi $t0, $t0, 4
+	la $s0, Board				# Load address of Board into $t0
+	li $s1, 0				# Use s1 to keep track of the number of states we have visited so far.
+	
+	DrawBoardLoop:
+	lw $a1, ($s0)
 	jal DrawSymbol
-	bne $t0, 224, SeventhDrawBoardLoop
-	la $a0, BoardRHS
+	addi $s0, $s0, 4
+	addi $s1, $s1, 4
+	
+	beq $s1, 32, DrawRHS1
+	beq $s1, 64, DrawRHS2
+	beq $s1, 96, DrawRHS3
+	beq $s1, 128, DrawRHS4
+	beq $s1, 160, DrawRHS5
+	beq $s1, 192, DrawRHS6
+	beq $s1, 224, DrawRHS7
+	beq $s1, 256, DrawRHS8
+	
+	j DrawBoardLoop
+	
+	DrawRHS1:
+		la $a0, BoardRHS
+		syscall
+		la $a0, BoardPieceC
+		syscall
+		j DrawBoardLoop
+	DrawRHS2:
+		la $a0, BoardRHS
+		syscall
+		la $a0, BoardPieceD
+		syscall
+		j DrawBoardLoop
+	DrawRHS3:
+		la $a0, BoardRHS
+		syscall
+		la $a0, BoardPieceE
+		syscall
+		j DrawBoardLoop
+	DrawRHS4:
+		la $a0, BoardRHS
+		syscall
+		la $a0, BoardPieceF
+		syscall
+		j DrawBoardLoop
+	DrawRHS5:
+		la $a0, BoardRHS
+		syscall
+		la $a0, BoardPieceG
+		syscall
+		j DrawBoardLoop
+	DrawRHS6:
+		la $a0, BoardRHS
+		syscall
+		la $a0, BoardPieceH
+		syscall
+		j DrawBoardLoop
+	DrawRHS7:
+		la $a0, BoardRHS
+		syscall
+		la $a0, BoardPieceI
+		syscall
+		j DrawBoardLoop
+	DrawRHS8:
+		la $a0, BoardRHS
+		syscall
+		j CalculateScoreAndPrint
+		
+CalculateScoreAndPrint:
+	# Helper function to calculate the score of each player, and print them at the bottom of the board.
+	#		$t0	Board address
+	#		$t1	Number of states visited.
+	#		$t4	X-Score
+	#		$t5	O-Score
+	#		$a1	Storage location for the word pulled from the Board.
+	
+	la $t0, Board				# Load address of Board into $t0
+	li $t1, 0				# Use t1 to keep track of the number of states we have visited so far.
+	
+	add $t4, $zero, $zero			# X-Score:	$t4
+	add $t5, $zero, $zero			# O-Score:	$t5
+	
+	CalculateScoreLoop:
+	lw $a1, ($t0)
+	addi $t0, $t0, 4
+	addi $t1, $t1, 4
+	
+	beq $a1, 1, Add1XScore			# $a1 == 1: add 1 to X-Score
+	beq $a1, 2, Add1OScore			# $a1 == 2: add 1 to O-Score
+	beq $t1, 256, FinishPrintingScores	# $t1 == 256: print and move on.
+	j CalculateScoreLoop			# Else, loop
+	
+	Add1XScore:	addi $t4, $t4, 1
+			j CalculateScoreLoop
+	
+	Add1OScore:	addi $t5, $t5 1
+			j CalculateScoreLoop
+	
+	FinishPrintingScores:
+	li $v0, 1				# Load 1 into $v0, print_int operator.
+	add $a0, $t4, $zero			# Put $t4 into $a0 for printing
+	syscall
+	li $v0, 4				# Load 4 into $v0, print_string operator.
+	la $a0, XScoreMessage			# Load the message into $a0.
 	syscall
 	
-	la $a0, BoardPieceI
+	li $v0, 1				# Load 1 into $v0, print_int operator
+	add $a0, $t5, $zero			# Put $t5 into $a0 for printing.
 	syscall
-	addi $t0, $zero, 224
-	EighthDrawBoardLoop:
-	lw $a1, Board($t0)
-	addi $t0, $t0, 4
-	jal DrawSymbol
-	bne $t0, 256, EighthDrawBoardLoop
-	la $a0, BoardRHS
-	syscall
-	
-	la $a0, BoardPieceJ
+	li $v0, 4				# Load 4 into $v0, print_string operator.
+	la $a0, OScoreMessage			# Load the message into $a0.
 	syscall
 	
 	j UserChooseBoardPosition
@@ -247,7 +282,10 @@ DrawSymbol:
 	beq $a1, $zero, DrawSpace
 	beq $a1, 1, DrawX
 	beq $a1, 2, DrawO
-	jr $ra
+	
+	# Error checking if symbol is out of range.
+	bgt $a1, 2, DrawSymbolError
+	blt $a1, $zero, DrawSymbolError
 
 	DrawX:		la $a0, X		# Print an X
 			syscall
@@ -258,8 +296,14 @@ DrawSymbol:
 	DrawSpace:	la $a0, SPACE		# Print a space (" ")
 			syscall
 			jr $ra
-
-
+	DrawSymbolError:
+			la $a0, DrawSymbolErrorMessage
+			syscall
+			li $v0, 1
+			move $a0, $a1
+			syscall
+			j ExitReversi
+			
 
 ConvertXYToBoardIndex:
 	# Board indices are stored in a 64-word array corresponding to the 64 positions on a Reversi Board.
@@ -278,12 +322,63 @@ IsOnBoard:
 	# Verify that the coordinates entered are valid coordinates.
 	# $a2 contains the Horizontal (X) Position (1-8)			$a2
 	# $a3 contains the Vertical (Y) Position (1-8)				$a3
+	# $t1 is a temporary register containing the truth of the statement	$t1
 	# Returns: 0 (False) or 1 (True) in $v0 if the chosen move is valid.	$v0
+	
+	# Initialize $v0 at 1, it will be true unless violated.
+	addi $v0, $zero, 1
+	
+	# X >= 1
+	sge $t1, $a2, 1
+	and $v0, $v0, $t1
+	
+	# X <= 8
+	sle $t1, $a2, 8
+	and $v0, $v0, $t1
+	
+	# Y >= 1
+	sge $t1, $a3, 1
+	and $v0, $v0, $t1
+	
+	# Y <= 8
+	sle $t1, $a3, 8
+	and $v0, $v0, $t1
+	
+	jr $ra
 
+ClearValidNextMoves:
+	# Clear the ValidNextMoves array between moves, or if a move was invalid.
+	# $t0 will be our index pointer.
+	
+	add $t0, $zero, $zero					# Start at 0
+	ClearValidNextMovesLoop:
+	sw $zero, ValidNextMoves($t0)
+	addi $t0, $t0, 4
+	beq $t0, 256, JumpAfterClearingValidNextMoves		# Loop until 256, then jump back to where you were.
+	j ClearValidNextMovesLoop				# Else loop
+	
+	JumpAfterClearingValidNextMoves:
+	jr $ra
 
-ValidateUserMove:
-	# Check whether a board position is a valid choice.
-
+isValidMove:
+	# Check whether a board position is a valid choice. Based somewhat on the "isValidMove" function in the Python code.
+	# Returns 0 if the human player's move is invalid (IsOnBoard) and clears "ValidNextMoves."
+	# If the move is valid, update ValidNextMoves
+	
+	# $a2: xstart
+	# $a3: ystart
+	
+	jal IsOnBoard					# Check if the xstart and ystart are actually on the board.
+	# Print outcome of isBoard for testing.
+	move $a0, $v0
+	li $v0, 1
+	syscall
+	#/testing
+	
+	addi $sp, $sp, 4
+	sw $ra, 0($sp)
+	j DrawBoard
+	
 UserChooseBoardPosition:
 	# Ask the user for the board position they wish to place a piece on.
 	li $v0, 4				# Load 4 into $v0, print_string opcode.
@@ -295,6 +390,7 @@ UserChooseBoardPosition:
 	syscall
 	
 	# Verify the number is not greater than 8 nor less than 1.
+	beq $v0, 404, MainMenu
 	blt $v0, 1, InvalidChoice
 	bgt $v0, 8, InvalidChoice
 	
@@ -311,8 +407,12 @@ UserChooseBoardPosition:
 	syscall
 	
 	# Verify the number he or she chose is neither greater than 8 nor less than 1.
+	beq $v0, 404, MainMenu
 	blt $v0, 1, InvalidChoice
 	bgt $v0, 8, InvalidChoice
+	
+	# Move the Y position from $v0 to $t1
+	add $t1, $v0, $zero
 	
 	# Now that the vertical Position has been validated, perform some adjustments and put in $t1
 	addi $t1, $v0, -1			# Offset by -1 (range is now 0-7)
@@ -326,7 +426,17 @@ UserChooseBoardPosition:
 	# /test
 	syscall
 	
-	jal DrawBoard
+	# Horizontal (X) in $t0
+	# Vertical (Y) in $v0
+	move $a2, $t0
+	move $a3, $t1
+	
+	# Store the return address on the stack so we can get back here.
+	#addi $sp, $sp, -4
+	#sw $ra, 0($sp)
+	j isValidMove
+	
+	#j DrawBoard
 	
 InvalidChoice:
 	# The user entered an invalid Board Position, have them try again.
@@ -334,3 +444,8 @@ InvalidChoice:
 	la $a0, InvalidFirstMessage		# Load address InvalidHorizontalMessage into $a0.
 	syscall
 	j UserChooseBoardPosition
+	
+ExitReversi:
+	# Exit the game.
+	li $v0, 10				# exit opcode
+	syscall
