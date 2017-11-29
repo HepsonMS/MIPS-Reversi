@@ -61,6 +61,10 @@
 	O: .asciiz "O|"
 	SPACE: .asciiz " |"
 	
+	# Scoring strings
+	XScoreMessage: .asciiz " points X; "
+	OScoreMessage: .asciiz " points O\n"
+	
 	# Instructions
 	EnterHorizontal:
 		.asciiz "\nEnter the horizontal number (1-8): "
@@ -223,7 +227,49 @@ DrawBoard:
 		syscall
 		la $a0, BoardPieceJ
 		syscall
-		j UserChooseBoardPosition
+		j CalculateScoreAndPrint
+		
+CalculateScoreAndPrint:
+	# Helper function to calculate the score of each player, and print them at the bottom of the board.
+	la $t0, Board				# Load address of Board into $t0
+	li $t1, 0				# Use t1 to keep track of the number of states we have visited so far.
+	
+	add $t4, $zero, $zero			# X-Score:	$t4
+	add $t5, $zero, $zero			# O-Score:	$t5
+	
+	CalculateScoreLoop:
+	lw $a1, ($t0)
+	addi $t0, $t0, 4
+	addi $t1, $t1, 4
+	
+	beq $a1, 1, Add1XScore			# $a1 == 1: add 1 to X-Score
+	beq $a1, 2, Add1OScore			# $a1 == 2: add 1 to O-Score
+	beq $t1, 256, FinishPrintingScores	# $t1 == 256: print and move on.
+	j CalculateScoreLoop			# Else, loop
+	
+	Add1XScore:	addi $t4, $t4, 1
+			j CalculateScoreLoop
+	
+	Add1OScore:	addi $t5, $t5 1
+			j CalculateScoreLoop
+	
+	FinishPrintingScores:
+	li $v0, 1				# Load 1 into $v0, print_int operator.
+	add $a0, $t4, $zero			# Put $t4 into $a0 for printing
+	syscall
+	li $v0, 4				# Load 4 into $v0, print_string operator.
+	la $a0, XScoreMessage			# Load the message into $a0.
+	syscall
+	
+	li $v0, 1				# Load 1 into $v0, print_int operator
+	add $a0, $t5, $zero			# Put $t5 into $a0 for printing.
+	syscall
+	li $v0, 4				# Load 4 into $v0, print_string operator.
+	la $a0, OScoreMessage			# Load the message into $a0.
+	syscall
+	
+	j UserChooseBoardPosition
+
 
 DrawSymbol:
 	# Helper function to draw a certain function depending on what the argument contains.
