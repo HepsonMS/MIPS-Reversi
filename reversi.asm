@@ -39,9 +39,9 @@
 .data
 
 	# Main Menu
-	TitleAndMenuOptions: .asciiz "     MIPS REVERSI\n0) New Game\n1) Instructions\n"
+	TitleAndMenuOptions: .asciiz "     MIPS REVERSI\n0) New Game\n1) Instructions\n2) Exit Game\n"
 	# Game Instructions
-	GameInstructions: .asciiz "\n\nInstructions\nReversi is a game where opponents flip tiles until there are no further moves.\n\n"
+	GameInstructions: .asciiz "\n\nInstructions\nReversi is a game where opponents flip tiles until there are no further moves.\nPlay by typing the horizontal and vertical coordinates, or 404 to return to main menu.\n"
 
 	# Board Segments
 	BoardPieceA: .asciiz "\n   1 2 3 4 5 6 7 8\n"
@@ -53,7 +53,6 @@
 	BoardPieceG: .asciiz " 6|"
 	BoardPieceH: .asciiz " 7|"
 	BoardPieceI: .asciiz " 8|"
-	BoardPieceJ: .asciiz "  \n"
 	BoardRHS: .asciiz "\n"
 	
 	# X, O, and space
@@ -73,7 +72,7 @@
 		
 	# Error messages
 	InvalidFirstMessage:
-		.asciiz "\nINVALID!"
+		.asciiz "\nINVALID! (enter 404 to exit)"
 	DrawSymbolErrorMessage:
 		.asciiz "\nError: Could not draw symbol with key:\n"
 	
@@ -108,6 +107,7 @@ MainMenu:
 	syscall
 	beq $v0, $zero, InitializeBoard		# 0: Jump to InitializeBoard
 	beq $v0, 1, InstructionsMenu		# 1: Jump to InstructionsMenu
+	beq $v0, 2, ExitReversi			# 2: Jump to the Exit.
 	j MainMenu				# Else: Return to main menu.
 	
 InstructionsMenu:
@@ -225,8 +225,6 @@ DrawBoard:
 	DrawRHS8:
 		la $a0, BoardRHS
 		syscall
-		la $a0, BoardPieceJ
-		syscall
 		j CalculateScoreAndPrint
 		
 CalculateScoreAndPrint:
@@ -275,7 +273,6 @@ CalculateScoreAndPrint:
 	syscall
 	
 	j UserChooseBoardPosition
-
 
 DrawSymbol:
 	# Helper function to draw a certain function depending on what the argument contains.
@@ -380,7 +377,7 @@ isValidMove:
 	
 	addi $sp, $sp, 4
 	sw $ra, 0($sp)
-	jr $ra
+	j DrawBoard
 	
 UserChooseBoardPosition:
 	# Ask the user for the board position they wish to place a piece on.
@@ -393,6 +390,7 @@ UserChooseBoardPosition:
 	syscall
 	
 	# Verify the number is not greater than 8 nor less than 1.
+	beq $v0, 404, MainMenu
 	blt $v0, 1, InvalidChoice
 	bgt $v0, 8, InvalidChoice
 	
@@ -409,6 +407,7 @@ UserChooseBoardPosition:
 	syscall
 	
 	# Verify the number he or she chose is neither greater than 8 nor less than 1.
+	beq $v0, 404, MainMenu
 	blt $v0, 1, InvalidChoice
 	bgt $v0, 8, InvalidChoice
 	
@@ -433,11 +432,11 @@ UserChooseBoardPosition:
 	move $a3, $t1
 	
 	# Store the return address on the stack so we can get back here.
-	addi $sp, $sp, -4
-	sw $ra, 0($sp)
-	jal isValidMove
+	#addi $sp, $sp, -4
+	#sw $ra, 0($sp)
+	j isValidMove
 	
-	j DrawBoard
+	#j DrawBoard
 	
 InvalidChoice:
 	# The user entered an invalid Board Position, have them try again.
