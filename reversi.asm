@@ -231,6 +231,12 @@ DrawBoard:
 		
 CalculateScoreAndPrint:
 	# Helper function to calculate the score of each player, and print them at the bottom of the board.
+	#		$t0	Board address
+	#		$t1	Number of states visited.
+	#		$t4	X-Score
+	#		$t5	O-Score
+	#		$a1	Storage location for the word pulled from the Board.
+	
 	la $t0, Board				# Load address of Board into $t0
 	li $t1, 0				# Use t1 to keep track of the number of states we have visited so far.
 	
