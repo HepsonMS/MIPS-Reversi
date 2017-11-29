@@ -23,20 +23,18 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-# The game will be played on a board which looks like this:
-	#   12345678 
-	#  +--------+
-	# 1|        |
-	# 2|        |
-	# 3|        |
-	# 4|        |
-	# 5|        |
-	# 6|        |
-	# 7|        |
-	# 8|        |
-	#  +--------+
-	
-	# The Python version of the board is much cleaner, implementing that is a goal.
+
+
+# The game will be played on a board which looks somewhat like this:
+		#   1 2 3 4 5 6 7 8
+		# 1| | | | | | | | |
+		# 2| | | | | | | | |
+		# 3| | | | | | | | |
+		# 4| | | |O|X| | | |
+		# 5| | | |X|O| | | |
+		# 6| | | | | | | | |
+		# 7| | | | | | | | |
+		# 8| | | | | | | | |
 
 .data
 
@@ -46,7 +44,7 @@
 	GameInstructions: .asciiz "\n\nInstructions\nReversi is a game where opponents flip tiles until there are no further moves.\n\n"
 
 	# Board Segments
-	BoardPieceA: .asciiz "\n   12345678 \n  +--------+\n"
+	BoardPieceA: .asciiz "\n   1 2 3 4 5 6 7 8\n"
 	BoardPieceB: .asciiz " 1|"
 	BoardPieceC: .asciiz " 2|"
 	BoardPieceD: .asciiz " 3|"
@@ -55,13 +53,13 @@
 	BoardPieceG: .asciiz " 6|"
 	BoardPieceH: .asciiz " 7|"
 	BoardPieceI: .asciiz " 8|"
-	BoardPieceJ: .asciiz "  +--------+\n"
-	BoardRHS: .asciiz "|\n"
+	BoardPieceJ: .asciiz "  \n"
+	BoardRHS: .asciiz "\n"
 	
 	# X, O, and space
-	X: .asciiz "X"
-	O: .asciiz "O"
-	SPACE: .asciiz " "
+	X: .asciiz "X|"
+	O: .asciiz "O|"
+	SPACE: .asciiz " |"
 	
 	# Instructions
 	EnterHorizontal:
@@ -79,7 +77,7 @@
 
 	Board: .word 0:256 # Reserve 64 * 4 == 256 in order to store the 64 board spaces.
 	
-	ValidNextMoves: .word 256 # Reserve potential board spaces that the human or computer can move to next.
+	ValidNextMoves: .word 0:256 # Reserve potential board spaces that the human or computer can move to next.
 	
 .text
 
@@ -92,8 +90,6 @@ main:
 	#	3. Computer Chooses where to move. (update board)
 	#	4. Check for Game Over.
 	#	5. Jump to Step 1.
-	
-	# Initialize the Board before the main function begins.
 	
 	j MainMenu
 	
@@ -130,7 +126,7 @@ ResetBoard:
 
 InitializeBoard:
 	# Initialize an empty board at the start of the program.
-	# Allocated spaces start at 0x00, so they will be considered open spaces until acted upon.
+	# Allocated words start at 0x00, so they will be considered open spaces until acted upon.
 	
 	addi $t1, $zero, 1			# Store 1 (X) into $t1
 	addi $t2, $zero, 2			# Store 2 (O) into $t2
@@ -153,7 +149,6 @@ InitializeBoard:
 	
 DrawBoard:
 	# Draw the board for Reversi, 0 becomes a space, 1 becomes an X, and 2 becomes an O
-	# Redo most of this with a macro if you find the time. Use two A registers to keep track of position and increment by 32.
 	li $v0, 4				# Load 4 into $v0, print_string opcode.
 	la $a0, BoardPieceA
 	syscall
@@ -242,8 +237,6 @@ DrawSymbol:
 	# Error checking if symbol is out of range.
 	bgt $a1, 2, DrawSymbolError
 	blt $a1, $zero, DrawSymbolError
-	
-	jr $ra
 
 	DrawX:		la $a0, X		# Print an X
 			syscall
@@ -304,8 +297,6 @@ IsOnBoard:
 	
 	jr $ra
 
-
-
 ClearValidNextMoves:
 	# Clear the ValidNextMoves array between moves, or if a move was invalid.
 	# $t0 will be our index pointer.
@@ -325,7 +316,20 @@ isValidMove:
 	# Returns 0 if the human player's move is invalid (IsOnBoard) and clears "ValidNextMoves."
 	# If the move is valid, update ValidNextMoves
 	
-
+	# $a2: xstart
+	# $a3: ystart
+	
+	jal IsOnBoard					# Check if the xstart and ystart are actually on the board.
+	# Print outcome of isBoard for testing.
+	move $a0, $v0
+	li $v0, 1
+	syscall
+	#/testing
+	
+	addi $sp, $sp, 4
+	sw $ra, 0($sp)
+	jr $ra
+	
 UserChooseBoardPosition:
 	# Ask the user for the board position they wish to place a piece on.
 	li $v0, 4				# Load 4 into $v0, print_string opcode.
@@ -356,6 +360,9 @@ UserChooseBoardPosition:
 	blt $v0, 1, InvalidChoice
 	bgt $v0, 8, InvalidChoice
 	
+	# Move the Y position from $v0 to $t1
+	add $t1, $v0, $zero
+	
 	# Now that the vertical Position has been validated, perform some adjustments and put in $t1
 	addi $t1, $v0, -1			# Offset by -1 (range is now 0-7)
 	sll $t1, $t1, 3				# Multiply by 8
@@ -368,7 +375,17 @@ UserChooseBoardPosition:
 	# /test
 	syscall
 	
-	jal DrawBoard
+	# Horizontal (X) in $t0
+	# Vertical (Y) in $v0
+	move $a2, $t0
+	move $a3, $t1
+	
+	# Store the return address on the stack so we can get back here.
+	addi $sp, $sp, -4
+	sw $ra, 0($sp)
+	jal isValidMove
+	
+	j DrawBoard
 	
 InvalidChoice:
 	# The user entered an invalid Board Position, have them try again.
