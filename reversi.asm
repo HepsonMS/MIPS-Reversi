@@ -68,7 +68,7 @@
 	EnterHorizontal:
 		.asciiz "\nEnter the horizontal number (1-8): "
 	EnterVertical:
-		.asciiz "Enter the vertical letter (1-8): "
+		.asciiz "Enter the vertical number (1-8): "
 		
 	# Error messages
 	InvalidFirstMessage:
@@ -242,7 +242,8 @@ CalculateScoreAndPrint:
 	add $t5, $zero, $zero			# O-Score:	$t5
 	
 	CalculateScoreLoop:
-	lw $a1, ($t0)
+	beq $t1, 256, FinishPrintingScores	# Check for out-of-bounds (occurs when $t0+=256 due to a piece at position 8x8)
+		lw $a1, ($t0)
 	addi $t0, $t0, 4
 	addi $t1, $t1, 4
 	
@@ -364,20 +365,28 @@ isValidMove:
 	# Check whether a board position is a valid choice. Based somewhat on the "isValidMove" function in the Python code.
 	# Returns 0 if the human player's move is invalid (IsOnBoard) and clears "ValidNextMoves."
 	# If the move is valid, update ValidNextMoves
+	# No need to call isOnBoard since that was already checked by UserChooseBoardPosition
 	
-	# $a2: xstart
-	# $a3: ystart
+	# $a2: xstart (0-28)
+	# $a3: ystart (0-224)
 	
-	jal IsOnBoard					# Check if the xstart and ystart are actually on the board.
-	# Print outcome of isBoard for testing.
-	move $a0, $v0
-	li $v0, 1
-	syscall
-	#/testing
+	addi $t3, $zero, 1				# X pieces represented by 1 on Board
+	add $t0, $a2, $a3				# Add x and y coordinates from UserChooseBoardPosition
+	lw $t2, Board($t0)				# Load item from Board at position calculated from x+y=$t0
 	
-	addi $sp, $sp, 4
-	sw $ra, 0($sp)
-	j DrawBoard
+	beq $t2, $zero, freeSpace			# If position is free, jump to freeSpace
+	beq $t2, 1, NOTfreeSpace			# If position is already occupied by X
+	beq $t2, 2, NOTfreeSpace			# If position is already occupied by O
+	
+	freeSpace:					
+							# NEED TO CHECK WHETHER POSITION IS ADJACENT AND FLANKS OPPONENT'S PIECES (here)
+							# If so, jump to validMove
+							# Else, jump to InvalidChoice
+		validMove:				# Store '1' for X at position x+y=$t0
+		sw $t3, Board($t0)
+		j DrawBoard
+	NOTfreeSpace:					# Print error and ask the user again for a new coordinate
+	j InvalidChoice
 	
 UserChooseBoardPosition:
 	# Ask the user for the board position they wish to place a piece on.
@@ -414,20 +423,22 @@ UserChooseBoardPosition:
 	# Move the Y position from $v0 to $t1
 	add $t1, $v0, $zero
 	
-	# Now that the vertical Position has been validated, perform some adjustments and put in $t1
-	addi $t1, $v0, -1			# Offset by -1 (range is now 0-7)
-	sll $t1, $t1, 3				# Multiply by 8
+	# Now that the vertical Position has been validated, perform some adjustments to both $t0 and $t1
+	addi $t0, $t0, -1			# Offset by -1 (range is now 0-7)
+	addi $t1, $t1, -1			# Offset by -1 (range is now 0-7)
+	sll $t0, $t0, 2				# Multiply by 4 (because consecutive column positions differ by 4)
+	sll $t1, $t1, 5				# Multiply by 32 (because consecutive row positions differ by 32)
 	
-	# $t0 is in [1,2,3,4,5,6,7,8], $t1 is in [0,8,16,24,32,40,48,56]. Add them together to get the board position.
+	# $t0 is in [0,4,8,12,16,20,24,28], $t1 is in [0,32,64,96,128,160,192,224]. Add them together to get the board position.
 	
 	# test: Print the position for testing purposes.
-	li $v0, 1
-	add $a0, $t0, $t1
+	#li $v0, 1
+	#add $a0, $t0, $t1
 	# /test
-	syscall
+	#syscall
 	
 	# Horizontal (X) in $t0
-	# Vertical (Y) in $v0
+	# Vertical (Y) in $t1
 	move $a2, $t0
 	move $a3, $t1
 	
