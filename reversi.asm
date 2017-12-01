@@ -68,7 +68,7 @@
 	EnterHorizontal:
 		.asciiz "\nEnter the horizontal number (1-8): "
 	EnterVertical:
-		.asciiz "Enter the vertical number (1-8): "
+		.asciiz "Enter the vertical letter (1-8): "
 		
 	# Error messages
 	InvalidFirstMessage:
@@ -159,9 +159,9 @@ DrawBoard:
 	
 	la $a0, BoardPieceB
 	syscall
-
-	la $s0, Board				# Load address of Board into $t0
-	li $s1, 0				# Use s1 to keep track of the number of states we have visited so far.
+	
+	la $s0, Board				# Load address of Board into $s0
+	li $s1, 0				# Use $s1 to keep track of the number of states we have visited so far.
 	
 	DrawBoardLoop:
 	lw $a1, ($s0)
@@ -322,7 +322,7 @@ ConvertXYToBoardIndex:
 IsOnBoard:
 	# Verify that the coordinates entered are valid coordinates.
 	# $a2 contains the Horizontal (X) Position (1-8)			$a2
-	# $a3 contains the Vertical (Y) Position (1-8)				$a3
+	# $a3 contains the Vertical (Y) Position (1-8)			$a3
 	# $t1 is a temporary register containing the truth of the statement	$t1
 	# Returns: 0 (False) or 1 (True) in $v0 if the chosen move is valid.	$v0
 	
@@ -365,7 +365,6 @@ isValidMove:
 	# Check whether a board position is a valid choice. Based somewhat on the "isValidMove" function in the Python code.
 	# Returns 0 if the human player's move is invalid (IsOnBoard) and clears "ValidNextMoves."
 	# If the move is valid, update ValidNextMoves
-	# No need to call isOnBoard since that was already checked by UserChooseBoardPosition
 	
 	# $a2: xstart (0-28)
 	# $a3: ystart (0-224)
@@ -422,20 +421,14 @@ UserChooseBoardPosition:
 	
 	# Move the Y position from $v0 to $t1
 	add $t1, $v0, $zero
-	
-	# Now that the vertical Position has been validated, perform some adjustments to both $t0 and $t1
+
+	# Now that the vertical Position has been validated, perform some adjustments and put in $t1
 	addi $t0, $t0, -1			# Offset by -1 (range is now 0-7)
 	addi $t1, $t1, -1			# Offset by -1 (range is now 0-7)
 	sll $t0, $t0, 2				# Multiply by 4 (because consecutive column positions differ by 4)
 	sll $t1, $t1, 5				# Multiply by 32 (because consecutive row positions differ by 32)
 	
 	# $t0 is in [0,4,8,12,16,20,24,28], $t1 is in [0,32,64,96,128,160,192,224]. Add them together to get the board position.
-	
-	# test: Print the position for testing purposes.
-	#li $v0, 1
-	#add $a0, $t0, $t1
-	# /test
-	#syscall
 	
 	# Horizontal (X) in $t0
 	# Vertical (Y) in $t1
